@@ -10,6 +10,7 @@ import argparse
 import subprocess
 from ssl import PROTOCOL_TLSv1, SSLContext
 from cassandra import ConsistencyLevel
+from cassandra.query import named_tuple_factory
 from cassandra_migrate import (Migrator, Migration, MigrationConfig,
                                MigrationError)
 from cassandra.cluster import ExecutionProfile, EXEC_PROFILE_DEFAULT
@@ -140,6 +141,7 @@ def main():
     else:
         profile = ExecutionProfile(
             consistency_level=ConsistencyLevel.ALL,
+            row_factory=named_tuple_factory,
         )
         args = {'execution_profiles': {EXEC_PROFILE_DEFAULT: profile}}
         if opts.use_ssl:
