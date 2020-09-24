@@ -18,9 +18,8 @@ from future.moves.itertools import zip_longest
 import arrow
 from tabulate import tabulate
 from cassandra import ConsistencyLevel
-from cassandra.query import named_tuple_factory
 
-from cassandra.cluster import Cluster, EXEC_PROFILE_DEFAULT
+from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra_migrate import (Migration, FailedMigration, InconsistentState,
                                UnknownMigration, ConcurrentMigration)
@@ -235,8 +234,6 @@ class Migrator(object):
         """Execute a query with the current session"""
 
         self.logger.debug('Executing query: {}'.format(query))
-        profile = self.session.execution_profile_clone_update(EXEC_PROFILE_DEFAULT, row_factory=named_tuple_factory)
-        kwargs['execution_profile'] = profile
         return self.session.execute(query, *args, **kwargs)
 
     def _keyspace_exists(self):
