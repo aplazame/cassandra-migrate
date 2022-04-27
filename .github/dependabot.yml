@@ -16,7 +16,4 @@ updates:
   labels:
     - dependabot
   reviewers:
-    - "aplazame/squad_app-backend-reviewers"
-    - "aplazame/squad_checkout-backend-reviewers"
-    - "aplazame/squad_core-backend-reviewers"
-    - "aplazame/squad_dashboards-backend-reviewers"
+    - "aplazame/dependabotreviewers"
