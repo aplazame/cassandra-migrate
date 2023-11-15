@@ -18,7 +18,7 @@ from future.moves.itertools import zip_longest
 import arrow
 from tabulate import tabulate
 from cassandra import ConsistencyLevel
-
+from cassandra.io.asyncorereactor import AsyncoreConnection
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra_migrate import (Migration, FailedMigration, InconsistentState,
@@ -615,3 +615,34 @@ class Migrator(object):
                     migration.name,
                     checksum))
             print(tabulate(data, headers=['#', 'Name', 'Checksum']))
+
+
+
+class MigratorBundle(Migrator):
+    """
+    Extend Migrator adding support for DataStax bundle
+    """
+
+    logger = logging.getLogger("Migrator")
+
+    def __init__(self, config, profile='dev', user=None, password=None, bundle_path=None, **args):
+        self.config = config
+
+        try:
+            self.current_profile = self.config.profiles[profile]
+        except KeyError:
+            raise ValueError("Invalid profile name '{}'".format(profile))
+
+        if user:
+            auth_provider = PlainTextAuthProvider(user, password)
+        else:
+            auth_provider = None
+
+        cloud_config = {
+            'secure_connect_bundle': bundle_path
+        }
+        self.cluster = Cluster(
+            cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncoreConnection
+        )
+
+        self._session = None
