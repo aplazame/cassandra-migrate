@@ -10,7 +10,7 @@ import logging
 import argparse
 import subprocess
 from cassandra import ConsistencyLevel
-from cassandra_migrate import (Migrator, Migration, MigrationConfig,
+from cassandra_migrate import (Migrator, MigratorBundle, Migration, MigrationConfig,
                                MigrationError)
 from cassandra.cluster import ExecutionProfile, EXEC_PROFILE_DEFAULT
 
@@ -75,7 +75,10 @@ def main():
                         help='Automatically answer "yes" for all questions')
     parser.add_argument('-ssl', '--use-ssl', action='store_true',
                         help='Use ssl connection')
-
+    parser.add_argument('-b', '--bundle-path', default=None,
+                        help="""Bundle .zip path for DataStax Cloud connection.
+                        If this option is provided the -H, -p, -s, -k, -t and -ssl
+                        options will be ignored""")
 
     cmds = parser.add_subparsers(help='sub-command help')
 
@@ -149,12 +152,19 @@ def main():
             ssl_context.options |= ssl.OP_NO_TLSv1
             ssl_context.options |= ssl.OP_NO_TLSv1_1
             args.update({'ssl_context': ssl_context})
-        with Migrator(config=config, profile=opts.profile,
-                      hosts=opts.hosts.split(','), port=opts.port,
-                      user=opts.user, password=opts.password,
-                      host_cert_path=opts.ssl_cert,
-                      client_key_path=opts.ssl_client_private_key,
-                      client_cert_path=opts.ssl_client_cert,  **args) as migrator:
+
+    if opts.bundle_path:
+        migrator_connection = MigratorBundle(config=config, user=opts.user, password=opts.password, bundle_path=opts.bundle_path)
+    else:
+        migrator_connection =  Migrator(
+            config=config, profile=opts.profile,
+            hosts=opts.hosts.split(','), port=opts.port,
+            user=opts.user, password=opts.password,
+            host_cert_path=opts.ssl_cert,
+            client_key_path=opts.ssl_client_private_key,
+            client_cert_path=opts.ssl_client_cert,  **args)
+
+    with migrator_connection as migrator:
             cmd_method = getattr(migrator, opts.action)
             if not callable(cmd_method):
                 print('Error: invalid command', file=sys.stderr)

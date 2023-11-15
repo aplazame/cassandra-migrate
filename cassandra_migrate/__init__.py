@@ -59,4 +59,4 @@ class UnknownMigration(MigrationError):
 
 from .migration import Migration
 from .config import MigrationConfig
-from .migrator import Migrator
+from .migrator import Migrator, MigratorBundle

@@ -1,6 +1,6 @@
 from setuptools import setup
 
-VERSION = '0.3.11'
+VERSION = '0.3.11-1'
 
 install_requires = [
     "arrow==1.*",
