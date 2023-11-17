@@ -5,7 +5,7 @@ VERSION = '0.3.13'
 install_requires = [
     "arrow==1.*",
     "cassandra-driver==3.28.0",
-    "click==8.1.3",
+    "click==8.1.7",
     "future==0.18.3",
     "python-dateutil==2.8.*",
     "PyYAML>=6,<7",
