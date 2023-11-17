@@ -8,7 +8,7 @@ install_requires = [
     "click==8.1.3",
     "future==0.18.3",
     "python-dateutil==2.8.*",
-    "PyYAML>=5,<7",
+    "PyYAML>=6,<7",
     "six==1.*",
     "tabulate==0.9.0",
     "typing-extensions>=3,<5"]
