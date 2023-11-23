@@ -625,9 +625,9 @@ class MigratorBundle(Migrator):
 
     logger = logging.getLogger("Migrator")
 
-    def __init__(self, config, profile='dev', user=None, password=None, bundle_path=None, **args):
+    def __init__(self, config, profile='dev', user=None, password=None, bundle_path=None, **kwargs):
         self.config = config
-        self.protocol_version = args.get('protocol_version', 4)
+        self.protocol_version = kwargs.get('protocol_version', 4)
 
         try:
             self.current_profile = self.config.profiles[profile]
