@@ -627,6 +627,7 @@ class MigratorBundle(Migrator):
 
     def __init__(self, config, profile='dev', user=None, password=None, bundle_path=None, **args):
         self.config = config
+        self.protocol_version = args.get('protocol_version', 4)
 
         try:
             self.current_profile = self.config.profiles[profile]
@@ -642,7 +643,8 @@ class MigratorBundle(Migrator):
             'secure_connect_bundle': bundle_path
         }
         self.cluster = Cluster(
-            cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncoreConnection
+            cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncoreConnection,
+            protocol_version=self.protocol_version
         )
 
         self._session = None
