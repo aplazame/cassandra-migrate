@@ -4,7 +4,7 @@ VERSION = '0.3.14'
 
 install_requires = [
     "arrow==1.*",
-    "cassandra-driver==3.28.0",
+    "cassandra-driver==3.29.0",
     "click==8.1.3",
     "future==0.18.3",
     "python-dateutil==2.8.*",
