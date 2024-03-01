@@ -7,7 +7,7 @@ install_requires = [
     "cassandra-driver>=3.29.0",
     "click==8.1.7",
     "future==0.18.3",
-    "python-dateutil==2.8.*",
+    "python-dateutil>=2.8,<2.10",
     "PyYAML>=6,<7",
     "six==1.*",
     "tabulate==0.9.0",
