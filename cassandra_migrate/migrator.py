@@ -2,7 +2,6 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-from builtins import input, str
 
 import re
 import logging
@@ -12,14 +11,14 @@ import sys
 import os
 import time
 import importlib
+from itertools import zip_longest
 from functools import wraps
-from future.moves.itertools import zip_longest
 
 import arrow
 from tabulate import tabulate
 from cassandra import ConsistencyLevel
-from cassandra.io.asyncorereactor import AsyncoreConnection
 from cassandra.cluster import Cluster
+from cassandra.io.asyncioreactor import AsyncioConnection
 from cassandra.auth import PlainTextAuthProvider
 from cassandra_migrate import (Migration, FailedMigration, InconsistentState,
                                UnknownMigration, ConcurrentMigration)
@@ -643,8 +642,6 @@ class MigratorBundle(Migrator):
             'secure_connect_bundle': bundle_path
         }
         self.cluster = Cluster(
-            cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncoreConnection,
-            protocol_version=self.protocol_version
-        )
+            cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncioConnection, protocol_version=self.protocol_version, **kwargs)
 
         self._session = None
