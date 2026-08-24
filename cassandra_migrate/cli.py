@@ -10,7 +10,7 @@ import logging
 import argparse
 import subprocess
 from cassandra import ConsistencyLevel
-from cassandra_migrate import (Migrator, MigratorBundle, Migration, MigrationConfig,
+from cassandra_migrate import (Migrator, MigratorBundle, Migration, MigrationConfig, MigratorKeyspace,
                                MigrationError)
 from cassandra.cluster import ExecutionProfile, EXEC_PROFILE_DEFAULT
 
@@ -79,6 +79,8 @@ def main():
                         help="""Bundle .zip path for DataStax Cloud connection.
                         If this option is provided the -H, -p, -s, -k, -t and -ssl
                         options will be ignored""")
+    parser.add_argument('-K', '--awskeyspace', default=None,
+                        help='AWS Keyspace cert files to use for migrations. If this option is provided the -H, -p, -s, -k, -t and -ssl options will be ignored')
 
     cmds = parser.add_subparsers(help='sub-command help')
 
@@ -153,7 +155,10 @@ def main():
             ssl_context.options |= ssl.OP_NO_TLSv1_1
             args.update({'ssl_context': ssl_context})
 
-    if opts.bundle_path:
+    if opts.awskeyspace:
+        migrator_connection = MigratorKeyspace(
+            config=config, profile=profile, bundle_path=opts.awskeyspace)
+    elif opts.bundle_path:
         migrator_connection = MigratorBundle(config=config, user=opts.user, password=opts.password, bundle_path=opts.bundle_path)
     else:
         migrator_connection =  Migrator(

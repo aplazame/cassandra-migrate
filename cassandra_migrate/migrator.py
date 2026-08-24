@@ -9,6 +9,7 @@ import uuid
 import codecs
 import sys
 import os
+import ssl
 import time
 import importlib
 from itertools import zip_longest
@@ -17,9 +18,10 @@ from functools import wraps
 import arrow
 from tabulate import tabulate
 from cassandra import ConsistencyLevel
-from cassandra.cluster import Cluster
+from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT
 from cassandra.io.asyncioreactor import AsyncioConnection
 from cassandra.auth import PlainTextAuthProvider
+from cassandra.policies import RoundRobinPolicy
 from cassandra_migrate import (Migration, FailedMigration, InconsistentState,
                                UnknownMigration, ConcurrentMigration)
 from cassandra_migrate.cql import CqlSplitter
@@ -643,5 +645,64 @@ class MigratorBundle(Migrator):
         }
         self.cluster = Cluster(
             cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncioConnection, protocol_version=self.protocol_version, **kwargs)
+
+        self._session = None
+
+
+class MigratorKeyspace(Migrator):
+    """
+    Extend Migrator adding support for AWS Keyspaces
+    """
+
+    logger = logging.getLogger("Migrator")
+
+    def __init__(self, config, profile='dev',
+                 bundle_path: str = '/tmp/keyspaces-bundle.pem',
+                 keyspaces_host: str = 'cassandra.eu-central-1.amazonaws.com',
+                 region_name: str = "eu-central-1",
+                 port: int = 9142,
+                 protocol_version: int = 4,
+                 verify_mode: ssl.VerifyMode = ssl.CERT_REQUIRED, **kwargs):
+        from cassandra_sigv4.auth import SigV4AuthProvider
+
+        self.config = config
+        self.protocol_version = protocol_version
+
+        try:
+            self.current_profile = self.config.profiles[profile]
+        except KeyError:
+            raise ValueError("Invalid profile name '{}'".format(profile))
+
+        if not keyspaces_host:
+            raise ValueError('Invalid keyspaces host')
+
+        if not bundle_path:
+            raise ValueError('Invalid keyspaces certificate path')
+
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        ssl_context.load_verify_locations(bundle_path)
+        if verify_mode == ssl.CERT_NONE:
+            ssl_context.check_hostname = False
+        ssl_context.verify_mode = verify_mode
+
+        auth_provider = SigV4AuthProvider(region_name=region_name)
+        if 'execution_profiles' not in kwargs:
+            execution_profile = ExecutionProfile(
+                consistency_level=ConsistencyLevel.LOCAL_QUORUM,
+                load_balancing_policy=RoundRobinPolicy(),
+            )
+            kwargs['execution_profiles'] = {
+                EXEC_PROFILE_DEFAULT: execution_profile
+            }
+
+        self.cluster = Cluster(
+            [keyspaces_host],
+            port=port,
+            ssl_context=ssl_context,
+            auth_provider=auth_provider,
+            connection_class=AsyncioConnection,
+            protocol_version=self.protocol_version,
+            **kwargs)
 
         self._session = None
