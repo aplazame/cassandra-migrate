@@ -1,11 +1,5 @@
-+---------------+---------------------+
-| BRANCH CI     | STATUS              |
-+===============+=====================+
-| master        | |Master Badge|      |
-+---------------+---------------------+
-
-.. |Master Badge| image:: https://circleci.com/gh/Cobliteam/cassandra-migrate/tree/master.svg?style=svg&circle-token=cd6c01feb75b2abc6d4123426170114452dbb3c0
-    :target:https://app.circleci.com/pipelines/github/Cobliteam/cassandra-migrate
+.. image:: https://github.com/aplazame/cassandra-migrate/actions/workflows/build-unit-test.yml/badge.svg?branch=master
+    :target: https://github.com/aplazame/cassandra-migrate/actions/workflows/build-unit-test.yml
 
 
 Cassandra-migrate
@@ -16,13 +10,14 @@ Simple Cassandra schema migration tool.
 Installation
 ------------
 
-Run ``pip install cassandra-migrate``.
+Run ``uv tool install cassandra-migrate``.
 
-For local development with ``uv``:
+For local development and tests with ``uv``:
 
 .. code:: bash
 
-    uv sync --group dev
+    uv sync --extra dev
+    uv run ./test.sh
 
 Reasoning
 ---------

@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cassandra-migrate"
 version = "0.3.15"
@@ -7,7 +11,7 @@ authors = [
 ]
 readme = "README.rst"
 requires-python = ">=3.10,<4"
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["cassandra", "schema", "migration"]
 dependencies = [
     "arrow==1.*",
@@ -24,12 +28,14 @@ dependencies = [
 [project.scripts]
 cassandra-migrate = "cassandra_migrate.cli:main"
 
+[tool.setuptools]
+packages = ["cassandra_migrate"]
+
 [project.optional-dependencies]
 dev = [
     "pytest",
     "coverage",
-    "flake8",
-    "tox",
-    "bumpversion",
-    "twine",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["cassandra_migrate/test"]
