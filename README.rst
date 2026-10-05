@@ -19,6 +19,19 @@ For local development and tests with ``uv``:
     uv sync --extra dev
     uv run ./test.sh
 
+Releases
+--------
+
+On pushes to ``master`` (including pull request merges), GitHub Actions reads
+the version from ``pyproject.toml``, builds the source distribution and wheel
+with ``uv``, and creates a matching tag and GitHub Release with both artifacts.
+Existing version tags are skipped. Tags retain the existing convention without
+a ``v`` prefix. This workflow does not publish to PyPI.
+
+Before merging a release, update ``project.version`` in ``pyproject.toml`` and
+run ``uv lock``. The release workflow can also be run manually with a branch
+or commit reference.
+
 Reasoning
 ---------
 

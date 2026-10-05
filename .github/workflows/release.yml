@@ -1,0 +1,96 @@
+name: Release from pyproject
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or commit to release from
+        required: false
+        default: master
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: '3.14'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+
+      - name: Read version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          content = Path("pyproject.toml").read_text(encoding="utf-8")
+          print(tomllib.loads(content)["project"]["version"])
+          PY
+          )
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check whether tag already exists
+        id: tag
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Build distribution artifacts
+        if: steps.tag.outputs.exists != 'true'
+        run: |
+          uv lock --check
+          uv build
+
+      - name: Create and push release tag
+        if: steps.tag.outputs.exists != 'true'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${RELEASE_TAG}" -m "release: ${RELEASE_TAG}"
+          git push origin "refs/tags/${RELEASE_TAG}"
+
+      - name: Create GitHub Release
+        if: steps.tag.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "${RELEASE_TAG}" dist/* --verify-tag \
+            --title "${RELEASE_TAG}" \
+            --notes "Release ${RELEASE_TAG}"
+
+      - name: Skip when version tag already exists
+        if: steps.tag.outputs.exists == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          echo "Tag ${RELEASE_TAG} already exists. Skipping release creation."
