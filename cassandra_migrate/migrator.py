@@ -211,10 +211,11 @@ class Migrator(object):
         elif v.isdigit():
             num = int(v)
         else:
-            try:
-                num = self.config.migrations.index(v)
-            except IndexError:
-                num = -1
+            num = next(
+                (index for index, migration in
+                 enumerate(self.config.migrations, 1)
+                 if migration.name == v),
+                -1)
 
         if num <= 0:
             raise ValueError('Invalid database version, must be a number > 0 '
