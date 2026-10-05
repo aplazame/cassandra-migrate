@@ -479,7 +479,7 @@ class Migrator(object):
         if last_version.state != Migration.State.FAILED:
             return
 
-        self.logger.warn(
+        self.logger.warning(
             'Cleaning up previous failed migration '
             '(version {}): {}'.format(last_version.version, last_version.name))
 
