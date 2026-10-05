@@ -1,7 +1,6 @@
 # encoding: utf-8
 
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import annotations
 
 import ssl
 import sys
@@ -14,7 +13,8 @@ from cassandra_migrate import (Migrator, MigratorBundle, Migration, MigrationCon
                                MigrationError)
 from cassandra.cluster import ExecutionProfile, EXEC_PROFILE_DEFAULT
 
-def open_file(filename):
+def open_file(filename: str) -> None:
+    """Open a generated migration in the configured editor."""
     if sys.platform == 'win32':
         os.startfile(filename)
     else:
@@ -29,7 +29,8 @@ def open_file(filename):
         subprocess.call(opener)
 
 
-def main():
+def main() -> None:
+    """Run the migration CLI with the selected connection mode."""
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("cassandra.policies").setLevel(logging.ERROR)
 
@@ -75,14 +76,22 @@ def main():
                         help='Automatically answer "yes" for all questions')
     parser.add_argument('-ssl', '--use-ssl', action='store_true',
                         help='Use ssl connection')
-    parser.add_argument('-b', '--bundle-path', default=None,
+    connections = parser.add_mutually_exclusive_group()
+    connections.add_argument('-b', '--bundle-path', default=None,
                         help="""Bundle .zip path for DataStax Cloud connection.
                         If this option is provided the -H, -p, -s, -k, -t and -ssl
                         options will be ignored""")
-    parser.add_argument('-K', '--awskeyspace', default=None,
-                        help='AWS Keyspace cert files to use for migrations. If this option is provided the -H, -p, -s, -k, -t and -ssl options will be ignored')
+    connections.add_argument('-K', '--awskeyspace', default=None,
+                        help='AWS Keyspaces PEM CA bundle. Ignores -H, -p, '
+                             '-u, -P, -s, -k, -t and --use-ssl')
 
-    cmds = parser.add_subparsers(help='sub-command help')
+    parser.add_argument('--aws-region', default='eu-central-1',
+                        help='AWS region for Keyspaces SigV4 authentication')
+    parser.add_argument('--aws-host', default=None,
+                        help='Keyspaces endpoint; defaults to the AWS region '
+                             'endpoint')
+
+    cmds = parser.add_subparsers(help='sub-command help', required=True)
 
     bline = cmds.add_parser(
         'baseline',
@@ -142,6 +151,7 @@ def main():
             open_file(new_path)
 
         print(os.path.basename(new_path))
+        return
     else:
         profile = ExecutionProfile(
             consistency_level=ConsistencyLevel.ALL,
@@ -157,9 +167,15 @@ def main():
 
     if opts.awskeyspace:
         migrator_connection = MigratorKeyspace(
-            config=config, profile=profile, bundle_path=opts.awskeyspace)
+            config=config, profile=opts.profile,
+            bundle_path=opts.awskeyspace,
+            region_name=opts.aws_region,
+            keyspaces_host=opts.aws_host or
+            f'cassandra.{opts.aws_region}.amazonaws.com')
     elif opts.bundle_path:
-        migrator_connection = MigratorBundle(config=config, user=opts.user, password=opts.password, bundle_path=opts.bundle_path)
+        migrator_connection = MigratorBundle(
+            config=config, profile=opts.profile, user=opts.user,
+            password=opts.password, bundle_path=opts.bundle_path)
     else:
         migrator_connection =  Migrator(
             config=config, profile=opts.profile,
