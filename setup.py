@@ -10,7 +10,7 @@ install_requires = [
     "python-dateutil>=2.8,<2.10",
     "PyYAML>=6,<7",
     "six==1.*",
-    "tabulate==0.9.0",
+    "tabulate==0.10.0",
     "typing-extensions>=3,<5"]
 
 setup(name='cassandra-migrate',
