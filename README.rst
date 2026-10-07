@@ -1,11 +1,5 @@
-+---------------+---------------------+
-| BRANCH CI     | STATUS              |
-+===============+=====================+
-| master        | |Master Badge|      |
-+---------------+---------------------+
-
-.. |Master Badge| image:: https://circleci.com/gh/Cobliteam/cassandra-migrate/tree/master.svg?style=svg&circle-token=cd6c01feb75b2abc6d4123426170114452dbb3c0
-    :target:https://app.circleci.com/pipelines/github/Cobliteam/cassandra-migrate
+.. image:: https://github.com/aplazame/cassandra-migrate/actions/workflows/build-unit-test.yml/badge.svg?branch=master
+    :target: https://github.com/aplazame/cassandra-migrate/actions/workflows/build-unit-test.yml
 
 
 Cassandra-migrate
@@ -16,7 +10,27 @@ Simple Cassandra schema migration tool.
 Installation
 ------------
 
-Run ``pip install cassandra-migrate``, or ``python ./setup.py install``
+Run ``uv tool install cassandra-migrate``.
+
+For local development and tests with ``uv``:
+
+.. code:: bash
+
+    uv sync --extra dev
+    uv run ./test.sh
+
+Releases
+--------
+
+On pushes to ``master`` (including pull request merges), GitHub Actions reads
+the version from ``pyproject.toml``, builds the source distribution and wheel
+with ``uv``, and creates a matching tag and GitHub Release with both artifacts.
+Existing version tags are skipped. Tags retain the existing convention without
+a ``v`` prefix. This workflow does not publish to PyPI.
+
+Before merging a release, update ``project.version`` in ``pyproject.toml`` and
+run ``uv lock``. The release workflow can also be run manually with a branch
+or commit reference.
 
 Reasoning
 ---------
@@ -128,6 +142,96 @@ Profiles can be defined in the configuration file. They can configure
 the ``replication`` and ``durable_writes`` parameters for
 ``CREATE KEYSPACE``. A default ``dev`` profile is implicitly defined
 using a replication factor of 1.
+
+Connection modes
+----------------
+
+All connection options go before the subcommand. ``-c`` selects the YAML
+configuration and ``-m`` selects its keyspace profile (``dev`` by default).
+The same connection options work with ``status``, ``migrate``, ``baseline``
+and ``reset``. ``generate`` only creates a local file and never connects.
+
+Normal Cassandra
+~~~~~~~~~~~~~~~~
+
+Use ``-H`` for comma-separated contact points and ``-p`` for the port
+(defaults: ``127.0.0.1`` and ``9042``). Username/password authentication is
+optional:
+
+.. code:: bash
+
+    uv run cassandra-migrate -c mydb.yml -m prod \
+        -H cassandra-1,cassandra-2 -p 9042 \
+        -u "$CASSANDRA_USER" -P "$CASSANDRA_PASSWORD" status
+
+For TLS, supply the CA certificate with ``-s``. For mutual TLS, also supply
+the client certificate and private key:
+
+.. code:: bash
+
+    uv run cassandra-migrate -c mydb.yml -m prod \
+        -H cassandra.example.com -p 9142 \
+        -s /certs/ca.pem -t /certs/client.pem -k /certs/client.key migrate
+
+DataStax secure connect bundle
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Pass the downloaded secure connect ZIP bundle with ``-b`` and the database
+credentials with ``-u`` and ``-P``:
+
+.. code:: bash
+
+    uv run cassandra-migrate -c mydb.yml -m prod \
+        -b /certs/secure-connect-database.zip \
+        -u "$CASSANDRA_USER" -P "$CASSANDRA_PASSWORD" migrate
+
+The bundle configures the endpoints and TLS; ``-H``, ``-p``, ``-s``, ``-k``,
+``-t`` and ``--use-ssl`` are not used in this mode.
+
+AWS Keyspaces
+~~~~~~~~~~~~~
+
+Pass a PEM CA certificate bundle trusted for the AWS endpoint with ``-K``
+or ``--awskeyspace``. This is a certificate file, not a DataStax ZIP bundle.
+The connection uses TLS with certificate/hostname verification, port
+``9142``, protocol version ``4`` and ``LOCAL_QUORUM`` consistency.
+
+Authentication uses SigV4 and the standard AWS credential provider chain,
+not Cassandra username/password. Configure credentials using an AWS profile,
+environment variables (including ``AWS_SESSION_TOKEN`` for temporary
+credentials), or an IAM role available to the process. The identity must
+have the required Keyspaces permissions for the operations being executed.
+Do not put AWS credentials in migration YAML files.
+
+.. code:: bash
+
+    AWS_PROFILE=my-keyspaces-profile uv run cassandra-migrate \
+        -c mydb.yml -m prod -K /certs/keyspaces-ca.pem \
+        --aws-region eu-west-1 status
+
+    AWS_PROFILE=my-keyspaces-profile uv run cassandra-migrate \
+        -c mydb.yml -m prod -K /certs/keyspaces-ca.pem \
+        --aws-region eu-west-1 migrate
+
+``--aws-region`` defaults to ``eu-central-1`` and determines both the SigV4
+region and the default endpoint ``cassandra.<region>.amazonaws.com``.
+Use ``--aws-host`` to override the endpoint while retaining the signing
+region, for example for a custom network endpoint:
+
+.. code:: bash
+
+    uv run cassandra-migrate -c mydb.yml -K /certs/keyspaces-ca.pem \
+        --aws-region eu-west-1 --aws-host your-keyspaces-endpoint status
+
+In this mode, ``-H``, ``-p``, ``-u``, ``-P``, ``-s``, ``-k``, ``-t`` and
+``--use-ssl`` are not used. ``-b`` and ``-K`` cannot be combined.
+``-m`` still selects the YAML keyspace profile; it is not an AWS profile.
+
+Connection configuration alone does not guarantee compatibility of every
+migration with Keyspaces. Review the service's supported CQL, keyspace
+replication settings and schema-operation behavior before running migrations.
+The unit tests validate connection configuration without AWS; they do not
+validate DDL or conditional migration-history writes against the service.
 
 Usage
 -----
