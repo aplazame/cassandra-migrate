@@ -196,6 +196,19 @@ or ``--awskeyspace``. This is a certificate file, not a DataStax ZIP bundle.
 The connection uses TLS with certificate/hostname verification, port
 ``9142``, protocol version ``4`` and ``LOCAL_QUORUM`` consistency.
 
+``--aws-verify-mode required`` is the default. To explicitly disable both
+certificate and hostname verification, pass ``--aws-verify-mode none``
+(``None`` is also accepted). This maps to ``ssl.CERT_NONE``, not Python
+``None``. TLS encryption remains enabled, but the server identity is no longer
+verified, leaving the connection vulnerable to interception. Use this only
+for controlled troubleshooting; the CLI emits a warning. A PEM CA bundle
+is still required, and this option can only disable verification with ``-K``.
+
+.. code:: bash
+
+    uv run cassandra-migrate -c mydb.yml -K /certs/keyspaces-ca.pem \
+        --aws-verify-mode none status
+
 Authentication uses SigV4 and the standard AWS credential provider chain,
 not Cassandra username/password. Configure credentials using an AWS profile,
 environment variables (including ``AWS_SESSION_TOKEN`` for temporary

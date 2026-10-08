@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cassandra-migrate"
-version = "0.3.16"
+version = "0.3.17"
 description = "Simple Cassandra database migration program."
 authors = [
     { name = "Daniel Miranda", email = "daniel@cobli.co" },
