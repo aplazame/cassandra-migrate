@@ -54,7 +54,12 @@ def test_keyspaces_configures_tls_authentication_and_driver(verify_mode: int) ->
     [
         (["-K", "/cert.pem", "--aws-region", "eu-west-1"], "MigratorKeyspace",
          {"bundle_path": "/cert.pem", "region_name": "eu-west-1",
-          "keyspaces_host": "cassandra.eu-west-1.amazonaws.com"}),
+          "keyspaces_host": "cassandra.eu-west-1.amazonaws.com",
+          "verify_mode": ssl.CERT_REQUIRED}),
+        (["-K", "/cert.pem", "--aws-verify-mode", "None"], "MigratorKeyspace",
+         {"verify_mode": ssl.CERT_NONE}),
+        (["-K", "/cert.pem", "--aws-verify-mode", "required"], "MigratorKeyspace",
+         {"verify_mode": ssl.CERT_REQUIRED}),
         (["-K", "/cert.pem", "--aws-host", "custom.example"], "MigratorKeyspace",
          {"bundle_path": "/cert.pem", "region_name": "eu-central-1",
           "keyspaces_host": "custom.example"}),
@@ -111,6 +116,50 @@ def test_cli_rejects_conflicting_connection_modes() -> None:
         with pytest.raises(SystemExit) as error:
             main()
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--aws-verify-mode", "none"],
+        ["-b", "/bundle.zip", "--aws-verify-mode", "none"],
+        ["-K", "/cert.pem", "--aws-verify-mode", "invalid"],
+    ],
+)
+def test_cli_rejects_invalid_tls_verification_options(arguments: list[str]) -> None:
+    """Reject invalid modes or disabling verification outside AWS Keyspaces."""
+    with patch("sys.argv", ["cassandra-migrate", *arguments, "status"]):
+        with pytest.raises(SystemExit) as error:
+            main()
+    assert error.value.code == 2
+
+
+def test_cli_warns_when_keyspaces_verification_is_disabled(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Warn explicitly when opting out of certificate and hostname verification."""
+    with (
+        patch("sys.argv", ["cassandra-migrate", "-K", "/cert.pem",
+                           "--aws-verify-mode", "none", "status"]),
+        patch("cassandra_migrate.cli.MigrationConfig.load"),
+        patch("cassandra_migrate.cli.MigratorKeyspace"),
+    ):
+        main()
+    assert "certificate and hostname verification are disabled" in caplog.text
+
+
+def test_keyspaces_disables_verification_on_real_ssl_context() -> None:
+    """Disable hostname checking before setting CERT_NONE on a real SSLContext."""
+    config = SimpleNamespace(profiles={"prod": {}})
+    with (
+        patch("cassandra_migrate.migrator.Cluster") as cluster,
+        patch("cassandra_migrate.migrator.ssl.SSLContext.load_verify_locations"),
+        patch("cassandra_sigv4.auth.SigV4AuthProvider"),
+    ):
+        MigratorKeyspace(config, profile="prod", verify_mode=ssl.CERT_NONE)
+    context = cluster.call_args.kwargs["ssl_context"]
+    assert context.verify_mode == ssl.CERT_NONE
+    assert context.check_hostname is False
 
 
 def test_bundle_configures_cloud_driver_without_connecting() -> None:

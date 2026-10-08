@@ -90,6 +90,10 @@ def main() -> None:
     parser.add_argument('--aws-host', default=None,
                         help='Keyspaces endpoint; defaults to the AWS region '
                              'endpoint')
+    parser.add_argument('--aws-verify-mode', type=str.lower,
+                        choices=('required', 'none'), default='required',
+                        help='Keyspaces TLS verification mode (default: required). '
+                             'none disables certificate and hostname verification')
 
     cmds = parser.add_subparsers(help='sub-command help', required=True)
 
@@ -139,6 +143,8 @@ def main() -> None:
                          help='Database version to baseline/reset/migrate to')
 
     opts = parser.parse_args()
+    if opts.aws_verify_mode == 'none' and not opts.awskeyspace:
+        parser.error('--aws-verify-mode none requires -K / --awskeyspace')
     # enable user confirmation if we're running the script from a TTY
     opts.cli_mode = sys.stdin.isatty()
     config = MigrationConfig.load(opts.config_file)
@@ -166,10 +172,18 @@ def main() -> None:
             args.update({'ssl_context': ssl_context})
 
     if opts.awskeyspace:
+        verify_mode = (
+            ssl.CERT_NONE if opts.aws_verify_mode == 'none' else ssl.CERT_REQUIRED
+        )
+        if verify_mode == ssl.CERT_NONE:
+            logging.warning(
+                'AWS Keyspaces TLS certificate and hostname verification are disabled'
+            )
         migrator_connection = MigratorKeyspace(
             config=config, profile=opts.profile,
             bundle_path=opts.awskeyspace,
             region_name=opts.aws_region,
+            verify_mode=verify_mode,
             keyspaces_host=opts.aws_host or
             f'cassandra.{opts.aws_region}.amazonaws.com')
     elif opts.bundle_path:
