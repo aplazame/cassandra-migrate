@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from cassandra import ConsistencyLevel
 from cassandra.cluster import EXEC_PROFILE_DEFAULT
-from cassandra.io.asyncioreactor import AsyncioConnection
+from cassandra.io.asyncorereactor import AsyncoreConnection
 
 from cassandra_migrate import MigratorBundle, MigratorKeyspace
 from cassandra_migrate.cli import main
@@ -40,7 +40,7 @@ def test_keyspaces_configures_tls_authentication_and_driver(verify_mode: int) ->
     assert cluster.call_args.args == (["cassandra.eu-west-1.amazonaws.com"],)
     assert kwargs["port"] == 9142
     assert kwargs["protocol_version"] == 4
-    assert kwargs["connection_class"] is AsyncioConnection
+    assert kwargs["connection_class"] is AsyncoreConnection
     assert kwargs["ssl_context"] is context.return_value
     assert kwargs["auth_provider"] is auth.return_value
     profile = kwargs["execution_profiles"][EXEC_PROFILE_DEFAULT]
@@ -177,7 +177,7 @@ def test_bundle_configures_cloud_driver_without_connecting() -> None:
     cluster.assert_called_once_with(
         cloud={"secure_connect_bundle": "/bundle.zip"},
         auth_provider=auth.return_value,
-        connection_class=AsyncioConnection,
+        connection_class=AsyncoreConnection,
         protocol_version=4,
     )
     assert migrator.current_profile is config.profiles["prod"]

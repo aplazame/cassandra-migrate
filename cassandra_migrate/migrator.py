@@ -19,7 +19,7 @@ import arrow
 from tabulate import tabulate
 from cassandra import ConsistencyLevel
 from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT
-from cassandra.io.asyncioreactor import AsyncioConnection
+from cassandra.io.asyncorereactor import AsyncoreConnection
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.policies import RoundRobinPolicy
 from cassandra_migrate import (Migration, FailedMigration, InconsistentState,
@@ -645,7 +645,7 @@ class MigratorBundle(Migrator):
             'secure_connect_bundle': bundle_path
         }
         self.cluster = Cluster(
-            cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncioConnection, protocol_version=self.protocol_version, **kwargs)
+            cloud=cloud_config, auth_provider=auth_provider, connection_class=AsyncoreConnection, protocol_version=self.protocol_version, **kwargs)
 
         self._session = None
 
@@ -702,7 +702,7 @@ class MigratorKeyspace(Migrator):
             port=port,
             ssl_context=ssl_context,
             auth_provider=auth_provider,
-            connection_class=AsyncioConnection,
+            connection_class=AsyncoreConnection,
             protocol_version=self.protocol_version,
             **kwargs)
 
